@@ -1,0 +1,271 @@
+New CICD Pipeline:
+
+SONAR_TOKEN: 18779235a24fd300c0ac9fbc8def593245b25e05
+Git Token: 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
+
+export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-11.0.23.0.9-2.amzn2.0.1.x86_64/"
+export PATH=$JAVA_HOME/bin:$PATH
+java -version
+
+You can take sample code of java j2e from below url 
+Sample java code: https://github.com/shan5a6/myweb.git
+
+Note: If you are using multiple java version in slave node then ensure you are configuring 
+java path in the jenkins. Manage jenkins - configuring tools - jdk installations - java (/usr/lib/jvm/java-11-openjdk-11.0.22.0.7-1.amzn2.0.1.x86_64)
+
+
+Step1:
+
+Jenkins Installation:
+
+sudo yum install java-17 -y 
+java -version
+
+
+sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat/jenkins.repo
+rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+yum clean all
+yum install jenkins -y
+systemctl restart jenkins
+systemctl enable jenkins
+
+Step2:
+Configuring slave node
+
+Note: Java17 is supported by jenkins & java11 is supported by application 
+
+sudo yum install java-17 -y 
+java -version
+
+sudo amazon-linux-extras install epel -y
+sudo amazon-linux-extras install java-openjdk11 -y
+java -version
+
+Step3:
+Installing required softwares in slave node:
+
+	yum install git -y
+	sudo amazon-linux-extras install epel -y
+	sudo yum install ansible -y
+	export SONAR_CLI_VERSION=5.0.1.3006
+	wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_CLI_VERSION-linux.zip
+	unzip sonar-scanner-cli-$SONAR_CLI_VERSION-linux.zip
+	mkdir /opt/sonar-scanner
+	mv sonar-scanner-$SONAR_CLI_VERSION-linux/* /opt/sonar-scanner/
+	ln -s /opt/sonar-scanner/bin/sonar-scanner /bin/sonar-scanner
+
+
+	wget http://repos.fedorapeople.org/repos/dchen/apache-maven/epel-apache-maven.repo -O /etc/yum.repos.d/epel-apache-maven.repo
+	sed -i s/\$releasever/6/g /etc/yum.repos.d/epel-apache-maven.repo
+	yum install -y apache-maven -y
+	mvn --version
+	
+	update-alternatives --config java
+		Note: Since we have multiple versions of java in the system default is always slave node version Java 17
+
+Step4:
+Configure sonar cloud account 
+
+Step5:
+Configure githubhook
+
+Step6:
+Generate gittoken
+
+Step7:
+Configure nexus server
+
+yum install docker -y
+systemctl enable docker
+systemctl restart docker
+
+docker run -d -p 80:8081 --name nexus sonatype/nexus3
+docker exec -it nexus /bin/bash -c "cat /nexus-data/admin.password"
+
+Step8:
+SONAR_TOKEN
+0a09e579d799fdec8cc1529c447be560b86d329c
+
+Configure PR pipeline
+
+::Firsttime Execute Manually for master branch::
+#!/bin/bash
+echo "Executing sonar cli"
+sonar-scanner \
+-Dsonar.projectKey="dvsdevops-batch2_java-application1"  \
+-Dsonar.sources="./target"   \
+-Dsonar.host.url="https://sonarcloud.io" \
+-Dsonar.branch.name="master" \
+-Dsonar.login=$SONAR_TOKEN \
+-Dsonar.organization="dvsdevops-batch2"
+
+Jenkins Job:
+Stage1: Git checkout to developers branch in our case release branch 
+
+Stage2: Using execute shell of the maven build 
+Maven Cli:
+export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-11.0.23.0.9-2.amzn2.0.1.x86_64/"
+export PATH=$JAVA_HOME/bin:$PATH
+mvn clean install 
+
+Stage3: Using execute shell of the sonarcli command run 
+Sonarcli:
+#!/bin/bash
+echo "Executing sonar cli"
+sonar-scanner \
+-Dsonar.projectKey="dvsdevops-batch2_java-application1"  \
+-Dsonar.sources="./target"   \
+-Dsonar.host.url="https://sonarcloud.io" \
+-Dsonar.branch.target="master" \
+-Dsonar.branch.name="release" \
+-Dsonar.login=$SONAR_TOKEN \
+-Dsonar.organization="dvsdevops-batch2"
+
+Step9:
+Configure build pipeline:
+
+Install nexus & maven plugins
+	nexus artifacts uploader 
+	maven integration
+
+java build pipeline should be "maven project"
+
+Nexus Version:  NEXUS3
+Protocol: HTTP/HTTPS
+Nexus URL: Nexus_Server_IP:port
+Credentials: add the nexus user credentials to upload the artifacts
+GroupId: ${POM_GROUPID}
+Version: ${POM_VERSION} 
+Repository: java-releases
+ArtifactId: ${POM_ARTIFACTID}
+Type: ${POM_PACKAGING}
+File:  ./target/${POM_ARTIFACTID}-${POM_VERSION}.${POM_PACKAGING}
+
+
+Step10:
+Test end to end pipeline execution
+
+
+##################  Preparing Infrastructure  ##################
+Step11:
+
+::::: Manual Installation of tomcat in linux server:::::
+
+Installing and configuring apache-tomcat as part the machine
+
+NOTE:
+First hit the url "https://dlcdn.apache.org/tomcat/tomcat-8" get the version and change the variable 
+"Version" to the latest version number  in the below execution.
+New change:
+https://dlcdn.apache.org/tomcat/tomcat-8
+
+Installation::
+
+	sudo amazon-linux-extras install java-openjdk11 -y
+	export Version=8.5.100
+	wget https://dlcdn.apache.org/tomcat/tomcat-8/v${Version}/bin/apache-tomcat-${Version}.tar.gz
+	tar xvfz apache-tomcat-${Version}.tar.gz
+	mv apache-tomcat-${Version}.tar.gz /tmp/
+	mv apache-tomcat-${Version}/ /opt/tomcat
+	cd /opt/tomcat/conf/
+	vim server.xml
+	:%s/8080/80/g
+	cd ..
+	bin/catalina.sh
+	netstat -nap|grep :80
+	
+	Configuring User @ Tomcat level:
+	
+		cd /opt/tomcat/webapps/manager/META-INF
+		Keep the context.xml file with below data ( Insimple please remove the "value" part)
+		
+		[root@jenkins META-INF]# cat context.xml
+		<?xml version="1.0" encoding="UTF-8"?>
+		<!--
+		  Licensed to the Apache Software Foundation (ASF) under one or more
+		  contributor license agreements.  See the NOTICE file distributed with
+		  this work for additional information regarding copyright ownership.
+		  The ASF licenses this file to You under the Apache License, Version 2.0
+		  (the "License"); you may not use this file except in compliance with
+		  the License.  You may obtain a copy of the License at
+
+			  http://www.apache.org/licenses/LICENSE-2.0
+
+		  Unless required by applicable law or agreed to in writing, software
+		  distributed under the License is distributed on an "AS IS" BASIS,
+		  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+		  See the License for the specific language governing permissions and
+		  limitations under the License.
+		-->
+		<Context antiResourceLocking="false" privileged="true" >
+		  <Manager sessionAttributeValueClassNameFilter="java\.lang\.(?:Boolean|Integer|Long|Number|String)|org\.apache\.catalina\.filters\.CsrfPreventionFilter\$LruCache(?:\$1)?|java\.util\.(?:Linked)?HashMap"/>
+		</Context>
+		
+		[root@jenkins META-INF]#
+		Hint:: use: :%s/\t//g for replacing wide tab spaces !!
+
+	Configuring user :
+		cd /opt/tomcat/conf
+		vim tomcat-users.xml
+		add the below content.
+		<role rolename="manager-gui"/>
+		<role rolename="manager-script"/>
+		<user username="admin" password="admin" roles="manager-gui,manager-script"/>
+		
+		/opt/tomcat/bin/catalina.sh run
+		
+		Now try to access the site using your user "dvsdevops" & password "dvsdevops"
+
+
+[root@tomcat-test tomcat8]# cat /etc/systemd/system/tomcat-service.service
+[Unit]
+Description=Tomcat service
+
+[Service]
+User=root
+ExecStart=/opt/tomcat/bin/catalina.sh run
+TimeoutSec=30
+Restart=on-failure
+RestartSec=30
+StartLimitInterval=350
+StartLimitBurst=10
+
+[Install]
+WantedBy=multi-user.target
+
+systemctl daemon-reload
+systemctl restart tomcat-service
+journalctl -f -u tomcat-service
+
+		
+		
+step12: Configuring infrastructure using ansible 
+
+build 4 servers one per each environment
+clone the code https://github.com/shan5a6/ansible-roles.git
+configure the ansible hosts file as per the server information
+Run the ansible playbook:
+
+ansible-playbook  -i  hosts -e "env=dev(or)prod" -v
+
+step13: Finally configure the deployment pipeline 
+
+Install the ansible plugin & run the deployment with the ansible 
+make sure that you are injecting secrets of nexus and passing variables for the ansible 
+version,env,nexus_user,nexus_password
+
+
+PR Pipelines Stages:
+
+1. git checkout to developers branch 
+   - release branch (in our case)
+2. code dependency checks
+3. code build 
+ --- you get artifacts in to a folder called target. It get created automatically when u run "mvn clean package"
+4. Code quality checks - sonarqube or sonarcloud 
+    - Sonarcli (software)
+5. Vulnerability checks - whitesource bolt, shiftleft 
+6. Secrets verification - Trivy scanner 
+7. unit test cases
+
+
