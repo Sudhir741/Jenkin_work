@@ -1,0 +1,1210 @@
+Kubernetes ::
+Limits::
+
+https://docs.openshift.com/container-platform/3.9/scaling_performance/cluster_limits.html
+
+Topic1 ::
+
+Introduction to Kubernetes ::
+
+What is Kubernetes :
+
+Commonly referred to by its internal designation during the development as Google(k8s),
+Kubernetes is an open source container cluster manage.
+
+When it was released in july 2015, Google donated it as "seed technology" to the newly
+formed Cloud native computing foundation established in a partenership
+with the linux foundation
+
+Kubernetes primary goal is to provide a platform for automating deployment,scaling and
+operations of application containers across a cluster of hosts.
+
+Design Overview:
+
+kubernetes is built through the definition of a set of components (building blocks or
+"primitives") which,when used collectively,provide a method for the deployment,
+maintenance and scalability of container based application clusters.
+
+These "primitives" are designed to be loosely coupled(i.e. where little to no knowledge
+of the other component definitions is needed to use) as well as easily extensible through
+an API.
+Both the internal components of kubernetes as well as the extensions and containers make
+use of this API.
+
+Although kubernetes was designed and used internally at google to deploy and utilize
+"billion of containers", since it was open sourced under the Apache common license,
+it has since been
+adopted formally as a service available from each of the major cloud providers.
+
+Components:
+
+Building Block of Kubernetes:
+
+Node(matser & workers)
+Pods
+Labels
+Selectors
+Controllers/Deployments
+Services
+Control Pane
+API
+
+
+Topic2 :
+
+Understanding Kubernetes Architecture ::
+
+Explain in detail about the architecture of K8s how it works.
+
+Please check "HighLevel Architecture" figure for more information ...
+
+From the above architecture we can conclude that we will have a "master controller" which
+will control all the other nodes. Here in k8s we called these nodes as "worker nodes",
+which means that each and every server (worker nodes) should have docker package installed. Along
+ with this we are going to create our containers in seperate environment which
+we called it as "Pods". Hence you are not allowed to create as seperate entity. You should
+create the containers as part of the pods. If you want to increase the containers
+you can increase the containers as part of that pods. And finally all the worker nodes will be
+managed by our master controller.
+
+Components of Kubernetes in detail over view ::
+
+
+worker nodes (Nodes):
+
+You can think of these as "container clients". These are the individual hosts(physical or
+virtual) that docker is installed on and hosts the various containers within your
+managed cluster.
+
+
+So Finally "worker nodes" are nothing but our physical or virtula server where we have our
+container package installed and it acts like a slave to the master controller.
+
+PODS:
+
+A pod consists of one or more containers. Those containers are guaranteed (by the cluster
+controller) to be located on the same host machine in order to facilitate sharing of
+resources.
+
+Pods are assigned unique ips with in each cluster. These allow an application to use ports
+with out having to worry about conflicting port utilization.
+
+Pods can contain definitions of disk volumes or share, and then provide access from those to
+ all the members(containers) with in the pod.
+
+Finally, pod management is done through the API or delegated to a controller.
+
+labels:
+
+Clients can attach "key-value pairs" to any object in the system (like pods or worker nodes).
+These become the labels that identify them in the configuration and management of them.
+
+
+Selectors:
+
+Label selectors represent queries that are made against those labels. They resolve to the
+corresponding matching objects.
+
+These two item are the primary way that grouping is done in kubernetes and determine which
+components that a given operation applies to when indicated.
+
+Controllers:
+
+These are used in the management of your cluster. Controllers are the mechanism by which
+your desired configuration state is enforced.
+
+Controllers manage a set of pods and depending on the desire configuration state, may enagage
+ other controllers to handle replication and scaling (Replication Controller)
+of XX number of containers and pods across the clsuter. It is also responsible for replacing
+any container in a pod that fails (based on the desired state of the cluster).
+
+Other controllers that cna be engaged include a DaemonSet Controller (enforces a 1 to 1
+ratio of pods to worker nodes) and job Controller(that runs pods to "completion", such
+as in batch jobs).
+
+Each set of pods any controller manages, is determined by the label selectors that are part
+ of its definition.
+
+Services:
+
+A pod consists of one or more containers. Those containers are guranteed (by the cluster
+controller) to be located on the same host machine in order to facilitate sharing of resources.
+
+This is so that pods can work together, like in a multi-tier application configuration.
+Each set of pods that define and implement a service (like Mysql or Apache) are defined
+by the label selector.
+
+Kubernetes can then provide service discovery and handle routing with the static ip for
+ each pod as well as load balancing (round robin based) connections to that service
+among the pods that match the label selector indicated.
+
+By default although a service is only exposed inside a cluster, it can also be exposed
+outside a cluster as needed
+
+
+On the Master Node following components will be installed ::
+
+API Server  – It provides kubernetes API using Json / Yaml over http, states of
+API objects are stored in etcd
+
+Scheduler  – It is a program on master node which performs the scheduling tasks like
+launching containers in worker nodes based on resource availability
+
+Controller Manager – Main Job of Controller manager is to monitor replication controllers
+and create pods to maintain desired state.
+
+etcd – It is a Key value pair data base. It stores configuration data of cluster and cluster
+ state.
+
+Kubectl utility – It is a command line utility which connects to API Server on port 6443.
+It is used by administrators to create pods, services etc.
+
+On Worker Nodes following components will be installed ::
+
+Kubelet – It is an agent which runs on every worker node, it connects to docker  and
+takes care of creating, starting, deleting containers.
+
+Kube-Proxy – It routes the traffic to appropriate containers based on ip address and
+port number of the incoming request. In other words we can say it is used for port translation.
+
+Pod – Pod can be defined as a multi-tier or group of containers that are deployed on
+a single worker node or docker host.
+
+Topic3 : Installation & Configuration 
+
+busybox:  radial/busyboxplus:curl
+[root@workstation myobjects]# cat busybox.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox1
+  labels:
+    app: busybox1
+  namespace: myapplication
+spec:
+  containers:
+  - image: radial/busyboxplus:curl
+    command:
+      - sleep
+      - "3600"
+    imagePullPolicy: IfNotPresent
+    name: busybox
+  restartPolicy: Always
+  
+	Installing and configuring aws eks cluster:
+
+	Pre-req
+	1. Build one ec2 and keep it as jump/workstation
+	2. Make sure you are installing below softwares
+		1. aws cli (update)
+			curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+			unzip awscliv2.zip
+			sudo ./aws/install
+		2. Install eksctl latest binary
+			https://eksctl.io/installation/
+			# for ARM systems, set ARCH to: arm64, armv6 or armv7
+			ARCH=amd64
+			PLATFORM=$(uname -s)_$ARCH
+			curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_$PLATFORM.tar.gz"
+			# (Optional) Verify checksum
+			curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_checksums.txt" | grep $PLATFORM | sha256sum --check
+			tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && /usr/bin/rm -f eksctl_$PLATFORM.tar.gz
+			sudo mv /tmp/eksctl /usr/local/bin
+			echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
+			eksctl version
+
+		3. Install latest of needed version of kubectl command
+			https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
+			curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.28.3/2023-11-14/bin/linux/amd64/kubectl
+			chmod +x ./kubectl
+			mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$PATH
+			echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
+			kubectl version --client
+	3. Configuring aws cli
+	Create an IAM user called eks-admin & ensure that you are giving him admin or eks privligies
+	Generate the aws cli access key,token & then try to configure the aws cli
+	Once done then try to build the cluster using the above generated credentials
+
+	4. Once you are done with the above just execute the below command
+
+		eksctl create cluster --name dvsbatch3-eks-2 --region us-east-2 --instance-types t2.micro \
+		--managed --vpc-cidr 192.168.100.0/24 --node-private-networking --version 1.27 --without-nodegroup
+		aws eks update-kubeconfig --region us-east-2 --name "dvsbatch3-eks-2"
+		kubectl delete daemonset -n kube-system aws-node
+		kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/tigera-operator.yaml
+kubectl create -f - <<EOF
+kind: Installation
+apiVersion: operator.tigera.io/v1
+metadata:
+  name: default
+spec:
+  kubernetesProvider: EKS
+  cni:
+	type: Calico
+  calicoNetwork:
+	bgp: Disabled
+EOF
+
+		eksctl create nodegroup --cluster dvsbatch3-eks-2 --name nodegroup1 --nodes 2 --node-type t2.medium --node-private-networking --managed --max-pods-per-node 200
+
+	5. Update the kubeconfig so that you can login to the cluster
+	aws eks update-kubeconfig --region us-east-2 --name "dvsbatch3-eks-2"
+
+	verification:
+	kubectl get nodes
+
+	6. Deleting cluster
+	eksctl delete cluster --name "dvsbatch3-eks-2"
+
+
+Topic 4::
+
+Working with the Cluster ::
+
+	Creating Name space (dvsdevops)
+
+	Switching NameSpace 
+	kubectl config set-context --current --namespace=dvsdevops
+
+	Creating a DC
+
+	Explain in detail about the pods like 
+	where they are getting created 
+	difference between container,pod & deployment by killing one by one or deleting them
+
+	Loging in to the pod
+	Hitting on the pod 
+	Checking pod logs 
+
+	Run a command directly from the container
+
+	Create a service by exposing container/pod port 80 to 8080 of the service
+	Explani in detail about the usecase of service & show them the pods connected to this service.
+
+	other commands:
+	view nodes,describe resources,
+	Force deleting the pods ::
+	kubectl delete pods nginx-86c57db685-9x5k7 --grace-period=0 --force
+
+Topic 5::
+
+Networking ::
+
+1. Container Network Interface (CNI) ::
+
+Basically CNI helps a lot in performing communication between two different nodes in the same cluster.
+The CNI has many responsibilities, including IP management, encapsulating packets, and mappings in userspace.
+As part of our cluster we are using flannel network, we do have many CNI plugins for this configuration they are as below.
+
+Apply the Flannel CNI plugin:
+
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/bc79dd1505b0c8681ece4de4c0d86c5cd2643275/Documentation/kube-flannel.yml
+
+Other Plugin Details ::
+
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
+
+https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+2. Service Networking ::
+
+Basically Service plays a crucial role in defining the a single point of contact for our application i.e., we have have n no.of pods serving one
+application. If you observe these pods may get created or deleted dynamically hence we cannot map to the exact pod ipaddress.
+
+If that is the case then we are gonna make use of our concept called service.
+
+We are having three types of service configurations.
+
+1. "ClusterIP"
+2. "NodePort"
+3. "LoadBalancer"
+
+Create SVC for each type and explain in detail about each service.
+
+Testing Our Service Configurations ::
+
+Lets deploy our apache configuration (httpd) & lets test it.
+kubectl create deployment apache --image httpd
+
+Change the default index.html file for the container & try to implement SVC with loadbalancer type.
+
+location: /usr/local/apache2/htdocs
+command: echo "I am apache1" > index.html
+
+Script:
+count=1
+for i in $(kubectl get pods|grep -v NAME|awk '{print $1}'); do echo $i; kubectl exec -it $i -- /bin/bash -c "echo I am apache${count} >/usr/local/apache2/htdocs/index.html"; count=$((count+1)); done
+
+Now lets test the execution.
+
+
+Topic 6 ::
+
+Scheduling ::
+
+Configuring the Kubernetes Scheduler
+
+Scheduler -->
+
+1. Does the node have adequate hardware resources ?
+2. Is the node running out of resources ?
+3. Does the pod requested for a specific node or name
+4. Does the node has matching label
+5. If the pod request a port, is it avaialable ?
+6. If the pod request a volume can it be mounted ?
+7. Does the pod tolerate the taints of the node ?
+Note: Master node is tainted with node shceduler is = false
+Node affinity is a set of rules used by the scheduler to determine where a pod can be placed
+reference: https://docs.openshift.com/container-platform/3.6/admin_guide/scheduling/node_affinity.html
+8.Does the pod specify node or pod affinity ?
+
+Basicaly when we are triggering the deployments its dynamically picking the free nodes & bringing the pods. if you want to change
+this behaviour then you can label the nodes & specify the same inside your pod/deployment definition.
+
+1. nodename
+
+1. Labeling the nodes 
+--show-labels
+
+2. NodeSelector
+
+Explain the use case of nodeselector 
+
+[root@master1 ~]# cat redis.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: store
+  template:
+    metadata:
+      labels:
+        app: store
+    spec:
+      containers:
+      - name: redis-server
+        image: redis:3.2-alpine
+
+
+Show the nodes on which pods are running once done change the code to below 
+change the node selector to type=database
+
+[root@master1 ~]# cat redis.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: store
+  template:
+    metadata:
+      labels:
+        app: store
+    spec:
+      containers:
+      - name: redis-server
+        image: redis:3.2-alpine
+      nodeSelector:
+        type: database
+		
+3. Resource Management
+
+Scheduling Pods with Resource Limits and Label Selectors::
+
+In this part we will try to create the pods with limiting the resources like cpu & memory.
+
+
+There are two things to be considered here
+1. Limits
+2. requests
+
+Limits are the max number which will be dedicately allocated to the pods
+Requests are the one with which the pod will spin up once its up.
+
+[root@master1 ~]# cat redis.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: store
+  template:
+    metadata:
+      labels:
+        app: store
+    spec:
+      containers:
+      - name: redis-server
+        image: redis:3.2-alpine
+        resources:
+          limits:
+            cpu: 1
+            memory: "200Mi"
+          requests:
+            cpu: "80m"
+            memory: "20Mi"
+
+4. DaemonSets and Manually Scheduled Pods ::
+
+DaemonSets are bit different from deployment configurations & replicasets as they work based on nodeSelectors
+
+DaemonSets plays an important role in scheduling the pods in servers. For these you no need to specify the
+schedulers or manual involvement for deploying the containers. Only thing you need to do is to provide the
+node selector value for the configuration.
+
+[root@master1 ~]# cat deamonset.yaml
+apiVersion: apps/v1
+kind: "DaemonSet"
+metadata:
+  labels:
+    app: nginx
+    ssd: "true"
+  name: nginx-fast-storage
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+      ssd: "true"
+  template:
+    metadata:
+      labels:
+        app: nginx
+        ssd: "true"
+    spec:
+      nodeSelector:
+        ssd: "true"
+      containers:
+        - name: nginx
+          image: nginx:1.10.0
+
+Now try to set the node label for worker1 first and then for worker2 
+removing labels from the servers.
+
+kubectl label node worker1 ssd-
+
+
+5. Displaying Scheduler Events::
+
+This section helps us more in checking the events happening at the scheduler level.
+
+Listing the scheduler pod.
+[root@master1 ~]# kubectl get pods -n kube-system|grep -i schedul
+kube-scheduler-master1            1/1     Running   1          19h
+
+Checking the logs
+
+[root@master1 ~]# kubectl logs kube-scheduler-master1 -f -n kube-system
+
+
+To get all the events in the project
+kubectl get events -n <project name>
+
+To Delete all the pods in the project/namespace
+
+kubectl delete pods --all -n mynginx
+
+Watch events as they are appearing in real time:
+
+kubectl get events -w
+
+The location of a systemd service scheduler pod:
+
+/var/log/kube-scheduler.log
+
+
+Topic 7::
+
+Application Lifecycle Management ::
+
+Deploying an Application, Rolling Updates, and Rollbacks
+
+In this make sure you are deploying one application with apache (httpd)
+make sure you are creating your own httpd images & pushing it to the dockerhub like below
+
+
+Example ::
+
+[root@master1 ~]# cat Dockerfile
+FROM httpd
+RUN echo "Hi I am V1" > /usr/local/apache2/htdocs/index.html
+[root@master1 ~]#
+docker build -t "shan5a6/deployment:v1" .
+docker push shan5a6/deployment:v1
+
+[root@master1 ~]# cat Dockerfile
+FROM httpd
+RUN echo "Hi I am V2" > /usr/local/apache2/htdocs/index.html
+[root@master1 ~]#
+docker build -t "shan5a6/deployment:v2" .
+docker push shan5a6/deployment:v2
+
+[root@master1 ~]# cat Dockerfile
+FROM httpd
+RUN echo "Hi I am error " > /usr/local/apache2/htdocs/index.html
+[root@master1 ~]#
+docker build -t "shan5a6/deployment:v3" .
+docker push shan5a6/deployment:v3
+
+[root@master1 ~]# cat Dockerfile
+FROM httpd
+RUN echo "Hi I am V4" > /usr/local/apache2/htdocs/index.html
+[root@master1 ~]#
+docker build -t "shan5a6/deployment:v4" .
+docker push shan5a6/deployment:v4
+
+Script :
+
+[root@master1 kubernetes-installation]# cat image.sh
+#!/usr/bin/bash
+for i in {1..4}
+do
+>Dockerfile
+if (( i == 3))
+then
+echo "FROM httpd" >>Dockerfile
+echo "RUN echo \"Hi I am error\" > /usr/local/apache2/htdocs/index.html" >> Dockerfile
+docker build -t "shan5a6/deployment:v3" .
+docker push shan5a6/deployment:v3
+fi
+echo "FROM httpd" >>Dockerfile
+echo "RUN echo \"Hi I am v$i\" > /usr/local/apache2/htdocs/index.html" >> Dockerfile
+docker build -t "shan5a6/deployment:v$i" .
+docker push shan5a6/deployment:v$i
+done
+
+Deployment ::
+
+[root@master1 ~]# cat deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mydeployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mydeployment
+  template:
+    metadata:
+      name: mydeployment
+      labels:
+        app: mydeployment
+    spec:
+      containers:
+      - image: shan5a6/deployment:v1
+        name: app
+		
+Now perform the below operations ::
+1. Create the deployment.
+kubectl create -f deployment.yaml --record
+note: explain about record option
+2. Expose the deployment as service via nodeport
+3. Useful Commands:
+kubectl rollout history deploy mydeployment
+kubectl scale deploy mydeployment --replicas=5
+kubectl patch deployment mydeployment -p '{"spec": {"replicas": 6}}'
+kubectl apply -f deployment.yml && kubectl replace -f deployment.yml
+4. Lets change the image & see the things in two terminals & watch our rolling update.
+Example:
+while true;do curl http://worker1:30287;sleep 2;done
+5. kubectl rollout undo deployments mydeployment
+kubectl rollout undo deployment mydeployment --to-revision=1
+kubectl set image deployment/nginx-deployment nginx=nginx:1.16.1 --record
+
+Topic 8::
+
+Configuring an Application for High Availability and Scale ::
+
+1. Configmaps ::
+
+Creating a configmap for the application data.
+
+[root@master1 ~]# kubectl create configmap appconfig --from-literal=key1=value1 --from-literal=key2=value2
+configmap/appconfig created
+
+Getting the configmap data.
+[root@master1 ~]# kubectl get configmap appconfig -o yaml
+apiVersion: v1
+data:
+  key1: value1
+  key2: value2
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2020-03-09T17:31:53Z"
+  name: appconfig
+  namespace: mynginx
+  resourceVersion: "120047"
+  selfLink: /api/v1/namespaces/mynginx/configmaps/appconfig
+  uid: 9e8f599d-f8d7-4b19-b546-afed52e9be60
+
+
+The YAML for the ConfigMap pod:
+
+[root@master1 ~]# cat configmap-pod.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-pod
+spec:
+  containers:
+  - name: app-container
+    image: busybox:1.28
+    command: ['sh', '-c', "echo $(MY_VAR) && sleep 3600"]
+    env:
+    - name: MY_VAR
+      valueFrom:
+        configMapKeyRef:
+          name: appconfig
+          key: key1
+
+ 
+[root@master1 ~]# kubectl create -f configmap-pod.yml
+pod/configmap-pod created
+[root@master1 ~]# kubectl get pods|grep -i config
+configmap-pod                   1/1     Running   0          11s
+[root@master1 ~]# kubectl logs configmap-pod
+value1
+
+
+The YAML for a pod that has a ConfigMap volume attached:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-volume-pod
+spec:
+  containers:
+  - name: app-container
+    image: busybox
+    command: ['sh', '-c', "echo $(MY_VAR) && sleep 3600"]
+    volumeMounts:
+      - name: configmapvolume
+        mountPath: /etc/config
+  volumes:
+    - name: configmapvolume
+      configMap:
+        name: appconfig
+
+Create the ConfigMap volume pod:
+
+kubectl apply -f configmap-volume-pod.yaml
+Get the keys from the volume on the container:
+
+kubectl exec configmap-volume-pod -- ls /etc/config
+Get the values from the volume on the pod:
+
+kubectl exec configmap-volume-pod -- cat /etc/config/key1
+
+2. Creating a secret
+
+[root@master1 ~]# cat appsecret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: appsecret
+stringData:
+  subject: kubernetes
+  batchno: 3
+[root@master1 ~]# kubectl create -f appsecret.yaml
+secret/appsecret created
+[root@master1 ~]# kubectl get secret
+NAME                  TYPE                                  DATA   AGE
+appsecret             Opaque                                2      6s
+
+
+[root@master1 ~]# cat secret-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-pod
+spec:
+  containers:
+  - name: app-container
+    image: busybox
+    command: ['sh', '-c', "echo Hello, Kubernetes! && sleep 3600"]
+    env:
+    - name: MY_CERT
+      valueFrom:
+        secretKeyRef:
+          name: appsecret
+          key: subject
+ 
+[root@master1 ~]# kubectl create -f secret-pod.yaml
+pod/secret-pod created
+
+[root@master1 ~]# kubectl exec -it secret-pod -- sh
+/ #
+/ # echo $MY_CERT
+value
+/ #
+
+Mounting secret as a volume :
+
+[root@master1 ~]# cat secret-volume-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-volume-pod
+spec:
+  containers:
+  - name: app-container
+    image: busybox
+    command: ['sh', '-c', "echo $(MY_VAR) && sleep 3600"]
+    volumeMounts:
+      - name: secretvolume
+        mountPath: /etc/certs
+  volumes:
+    - name: secretvolume
+      secret:
+        secretName: appsecret
+
+[root@master1 ~]# kubectl apply -f secret-volume-pod.yaml
+pod/secret-volume-pod created
+
+[root@master1 ~]# kubectl exec secret-volume-pod -- ls /etc/certs
+cert
+key
+
+Topic 9::
+
+Storage ::
+
+Persistent Volumes
+
+ref: https://kubernetes.io/blog/2018/04/13/local-persistent-volumes-beta/
+     https://www.server-world.info/en/note?os=CentOS_7&p=kubernetes&f=6
+
+The main ideaology of this PV concept is to provide the disk for the containers. 
+There is a concept called Statefull & Stateless pods. 
+
+Statefull : The pods which depend on storage
+Stateless: The pods which dont depend on storage
+
+Current Supportin storages ::
+gcePersistentDisk
+awsElasticBlockStore
+Cinder
+glusterfs
+rbd
+Azure File
+Azure Disk
+Portworx
+FlexVolumes
+CSI
+
+Volume Reclaim Policies ::
+(persistentVolumeReclaimPolicy)
+Retain :
+The Retain reclaim policy allows for manual reclamation of the resource. When the PersistentVolumeClaim is deleted, 
+the PersistentVolume still exists and the volume is considered "released". But it is not yet available for another 
+claim because the previous claimant’s data remains on the volume
+
+Recycle :
+If supported by the underlying volume plugin, the Recycle reclaim policy performs a basic scrub (rm -rf /thevolume/*) on 
+the volume and makes it available again for a new claim.
+
+ref:
+https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+
+Volume Access Modes ::
+(accessModes)
+accessModes:
+# ReadWriteMany(RW from multi nodes(RWX)), ReadWriteOnce(RW from a node(RWO)), ReadOnlyMany(R from multi nodes(ROX))
+
+ref: 
+https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+
+Topic 9::
+
+Storage Management::
+https://www.stacksimplify.com/aws-eks/kubernetes-storage/install-aws-ebs-csi-driver-on-aws-eks-for-persistent-storage/
+
+Ref: Git Link
+https://github.com/kubernetes-sigs/aws-ebs-csi-driver.git
+
+Create IAM Policy for EBS - AmazonEBSCSIDriverPolicy:
+Aws have their own policy for EBS driver called "AmazonEBSCSIDriverPolicy" we can use the same for our ebs
+Associate IAM Policy to Worker Node IAM Role
+POLICY_ARN=$(aws iam list-policies --query 'Policies[?PolicyName==`AmazonEBSCSIDriverPolicy`].Arn' --output text)
+NODE_ROLE_NAME=$(kubectl get configmap aws-auth -n kube-system  -o yaml |grep rolearn|awk '{print $2}'|awk -F'/' '{print $2}')
+aws iam attach-role-policy  --policy-arn $POLICY_ARN --role-name $NODE_ROLE_NAME
+
+Install EBS CSI Driver
+kubectl apply -k "github.com/kubernetes-sigs/aws-ebs-csi-driver/deploy/kubernetes/overlays/stable/?ref=master"
+
+now we have role & its permission to create the ebs volume. We have to ensure that we are creating the storage class
+
+kubectl create -f - <<EOF
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-sc
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+EOF
+
+creating a persistent-volume claim:
+
+kubectl create -f - <<EOF
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ebs-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: 4Gi
+EOF
+
+Creating the consumer to consume the pod:
+pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+spec:
+  containers:
+  - name: app
+    image: centos
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do echo $(date -u) >> /data/out.txt; sleep 5; done"]
+    volumeMounts:
+    - name: persistent-storage
+      mountPath: /data
+  volumes:
+  - name: persistent-storage
+    persistentVolumeClaim:
+      claimName: ebs-claim
+
+
+10. Monitoring
+
+Monitoring the Applications Running within a Cluster ::
+
+We are having a concept called Probes. Using these probes we configure & confirm the status of the application. 
+
+We generally use 
+1. Liveness Probe 
+2. readiness Probe
+
+Probe is going to happen using any of the below types. 
+
+1. Exec Action :
+Using this we wil execute one command inside the container based on the result we will confirm if the application is up or not. 
+If you are getting error in the command result then it will delete the container & create the container based on the "restart" policy set
+for the container. 
+
+2. TCP SocketAction :
+Using this we will hit on the TCP port of the container based on the result we will decide if the container is up or not. 
+If the container is not responding then container is killed & a new one will be created based up on the "restart" policy.
+
+3. Http GetAction:
+This is also same as above but it will hit on the http url on the specified port to the container, if it recieves any number 
+other than 200-400 then it will be considered as failure & it will kill the container & create the new container. 
+
+All the above probes can be applied on Liveness & readiness probes. 
+
+1. Liveness probe ::
+
+This is applied to check the live ness of any container by hitting either via http/tcp/exec probes. If it gets response then fine
+otherwise your container will be deleted &  a new one will be created.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: liveness-http
+spec:
+  containers:
+  - args:
+    - /server
+    image: k8s.gcr.io/liveness
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+        httpHeaders:
+        - name: X-Custom-Header
+          value: Awesome
+      initialDelaySeconds: 15
+      timeoutSeconds: 1
+    name: liveness
+	
+2. readinessProbe: 
+
+Indicates whether the Container is ready to service requests. If the readiness probe fails, 
+the endpoints controller removes the Pod’s IP address from the endpoints of all Services that match the Pod. 
+The default state of readiness before the initial delay is Failure. If a Container does not provide a readiness probe, 
+the default state is Success.
+
+In simple its configured for the service which is holding the containers. Below we are going to configure two pods with one service.
+
+
+[root@master1 metrics-server]# cat readiness.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 5
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginxpd
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 5
+	  
+Managing Application Logs ::
+
+Getting pod logs ::
+
+[root@master1 metrics-server]# kubectl logs nginxpd
+10.36.0.0 - - [12/Mar/2020:12:36:37 +0000] "GET / HTTP/1.1" 200 612 "-" "kube-probe/1.17" "-"
+10.36.0.0 - - [12/Mar/2020:12:36:42 +0000] "GET / HTTP/1.1" 200 612 "-" "kube-probe/1.17" "-"
+10.36.0.0 - - [12/Mar/2020:12:36:47 +0000] "GET / HTTP/1.1" 200 612 "-" "kube-probe/1.17" "-"
+10.36.0.0 - - [12/Mar/2020:12:36:52 +0000] "GET / HTTP/1.1" 200 612 "-" "kube-probe/1.17" "-"
+10.36.0.0 - - [12/Mar/2020:12:36:57 +0000] "GET / HTTP/1.1" 200 612 "-" "kube-probe/1.17" "-"
+10.36.0.0 - - [12/Mar/2020:12:37:02 +0000] "GET / HTTP/1.1" 200 612 "-" "kube-probe/1.17" "-"
+
+
+Get the logs from a specific container on a pod:
+kubectl logs counter -c count-log-1
+
+Get the logs from all containers on the pod:
+kubectl logs counter --all-containers=true
+
+Get the logs from containers with a certain label:
+kubectl logs -l app=nginx
+
+Get the logs from a previously terminated container within a pod:
+kubectl logs -p -c nginx nginx
+
+Stream the logs from a container in a pod:
+kubectl logs -f -c count-log-1 counter
+
+Tail the logs to only view a certain number of lines:
+kubectl logs --tail=20 nginx
+
+View the logs from a previous time duration:
+kubectl logs --since=1h nginx
+
+View the logs from a container within a pod within a deployment:
+kubectl logs deployment/nginx -c nginx
+
+Redirect the output of the logs to a file:
+kubectl logs counter -c count-log-1 > count.log
+
+ref: https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#logs
+
+Topic 11::  Cluster Autoscalling 
+
+Note: Teach Them about autoscalling
+kubectl autoscale --min 3 --max 6 --cpu-percent 80 deploy/httpd-deploy-vol
+
+*** Cluster Autoscalling ***
+Note: Make sure that you are changing the nodegroup ASG node type to atleast t2.medium otherwise node scheduler pod will notcome up .
+
+https://archive.eksworkshop.com/beginner/080_scaling/deploy_ca/
+
+export CLUSTER_NAME="dvsbatch3-eks"
+export MIN=2
+export MAX=4
+export DESIRED=3
+export ACCOUNT_ID=588593032302
+
+aws autoscaling \
+    describe-auto-scaling-groups \
+    --query "AutoScalingGroups[? Tags[? (Key=='eks:cluster-name') && Value=='$CLUSTER_NAME']].[AutoScalingGroupName, MinSize, MaxSize,DesiredCapacity]" \
+    --output table
+export ASG_NAME=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[? Tags[? (Key=='eks:cluster-name') && Value=='$CLUSTER_NAME']].AutoScalingGroupName" --output text)
+# increase max capacity up to 4
+aws autoscaling \
+    update-auto-scaling-group \
+    --auto-scaling-group-name ${ASG_NAME} \
+    --min-size $MIN \
+    --desired-capacity $DESIRED \
+    --max-size $MAX
+
+# Check new values
+aws autoscaling \
+    describe-auto-scaling-groups \
+    --query "AutoScalingGroups[? Tags[? (Key=='eks:cluster-name') && Value=='$CLUSTER_NAME']].[AutoScalingGroupName, MinSize, MaxSize,DesiredCapacity]" \
+    --output table
+
+# Enabling IAM roles for service accounts on your cluster
+eksctl utils associate-iam-oidc-provider \
+    --cluster $CLUSTER_NAME \
+    --approve
+
+# Creating an IAM policy for your service account that will allow your CA pod to interact with the autoscaling groups.
+
+cat <<EoF >k8s-asg-policy.json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:DescribeAutoScalingInstances",
+                "autoscaling:DescribeLaunchConfigurations",
+                "autoscaling:DescribeTags",
+                "autoscaling:SetDesiredCapacity",
+                "autoscaling:TerminateInstanceInAutoScalingGroup",
+                "ec2:DescribeLaunchTemplateVersions"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        }
+    ]
+}
+EoF
+
+aws iam create-policy     --policy-name k8s-asg-policy   --policy-document file:///$(pwd)/k8s-asg-policy.json
+
+eksctl create iamserviceaccount \
+    --name cluster-autoscaler \
+    --namespace kube-system \
+    --cluster ${CLUSTER_NAME} \
+    --attach-policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/k8s-asg-policy" \
+    --approve \
+    --override-existing-serviceaccounts
+
+kubectl -n kube-system describe sa cluster-autoscaler
+
+kubectl apply -f https://www.eksworkshop.com/beginner/080_scaling/deploy_ca.files/cluster-autoscaler-autodiscover.yaml
+
+export AUTOSCALER_VERSION="1.21.2"
+kubectl -n kube-system \
+    set image deployment.apps/cluster-autoscaler \
+    cluster-autoscaler=us.gcr.io/k8s-artifacts-prod/autoscaling/cluster-autoscaler:v${AUTOSCALER_VERSION}
+
+Make sure that you are changing the deployment & update the nodegroup vaules
+kubectl edit deploy cluster-autoscaler -n kube-system
+- --node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/dvsbatch3-eks-2{{ update this one as per your cluster name }}
+
+
+kubectl -n kube-system logs -f deployment/cluster-autoscaler
+
+Enable pod preemption in the Kubernetes scheduler to allow lower priority pods to be evicted from the nodes to make room for higher priority pods.
+
+Topic 12:: Ingress
+
+**** Ingress ****
+
+Installing helm:
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+Installing Ingress using helm:
+https://docs.microsoft.com/en-us/azure/aks/ingress-basic?tabs=azure-cli
+
+NAMESPACE=ingress-basic
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install ingress-nginx ingress-nginx/ingress-nginx --create-namespace --namespace $NAMESPACE
+Verify the ingress ip address at the project level as well in the azure load balancer
+
+kubectl delete -A ValidatingWebhookConfiguration ingress-nginx-admission
+
+Configure two applications with deployments & services.
+
+App1: Dockerfile
+
+FROM httpd
+RUN echo "<h1>Hi Team welcome to deployment1-app1</h1>" > /usr/local/apache2/htdocs/index.html
+
+    docker login
+docker build -t "shan5a6/app1" .
+docker push shan5a6/app1
+
+App2: Dockerfile
+
+FROM httpd
+RUN echo "<h1>Hi Team welcome to deployment2-app2</h1>" > /usr/local/apache2/htdocs/index.html
+
+docker build -t "dvsbatch1acr.azurecr.io/app2" .
+docker push dvsbatch1acr.azurecr.io/app2
+
+Deploy the app1-dc1,app1-svc1,app2-dc2,app2-svc2
+
+Configure the ingress rule:
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: application-access
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /app1
+        pathType: Prefix
+        backend:
+          service:
+            name: deployment1-app1-svc1
+            port:
+              number: 80
+      - path: /app2
+        pathType: Prefix
+        backend:
+          service:
+            name: deployment2-app2-svc2
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service: deployment1-app1-svc1
+            name: 
+            port:
+              number: 80

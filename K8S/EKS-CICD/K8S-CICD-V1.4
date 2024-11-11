@@ -1,0 +1,253 @@
+K8S-CICD:
+
+Note:
+Install eks cluster first 
+Make sure you are not creating eks cluster in north virginia 
+Then Build jenkins server in the eks vpc 
+
+
+1. Jenkins Installation and configuration
+	hostnamectl set-hostname jenkins
+	sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat/jenkins.repo
+	sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+	sudo yum clean all
+#	sudo yum update -y
+	sleep 5
+	sudo amazon-linux-extras install java-openjdk11 -y
+	sudo yum install jenkins git -y
+	systemctl enable jenkins
+	systemctl start jenkins
+	bash
+
+***************
+2. Installing K8S
+	https://github.com/shan5a6/kubernetes-installation.git
+	
+	Hardware specs:
+		Master node: t2.medium (4GB RAM,2Core CPU)
+		Slave node:  t2.medium (4GB RAM,2Core CPU)
+	Note: Make sure that you are taking server os as ubuntu >= 20.X
+***************
+
+2. Installing Eks Cluster 
+
+Installing and configuring aws eks cluster:
+
+	Pre-req
+	1. Build one ec2 and keep it as jump/workstation
+	2. Make sure you are installing below softwares
+		1. aws cli (update)
+			curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+			unzip awscliv2.zip
+			sudo ./aws/install
+		2. Install eksctl latest binary
+			https://eksctl.io/installation/
+			# for ARM systems, set ARCH to: arm64, armv6 or armv7
+			ARCH=amd64
+			PLATFORM=$(uname -s)_$ARCH
+			curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_$PLATFORM.tar.gz"
+			# (Optional) Verify checksum
+			curl -sL "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_checksums.txt" | grep $PLATFORM | sha256sum --check
+			tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && /usr/bin/rm -f eksctl_$PLATFORM.tar.gz
+			sudo mv /tmp/eksctl /usr/local/bin
+			echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
+			eksctl version
+
+		3. Install latest of needed version of kubectl command
+			https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
+			curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.28.3/2023-11-14/bin/linux/amd64/kubectl
+			chmod +x ./kubectl
+			mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$PATH
+			echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
+			kubectl version --client
+	3. Configuring aws cli
+	Create an IAM user called eks-admin & ensure that you are giving him admin or eks privligies
+	Generate the aws cli access key,token & then try to configure the aws cli
+	Once done then try to build the cluster using the above generated credentials
+
+	4. Once you are done with the above just execute the below command
+
+		eksctl create cluster --name dvsbatch3-eks-2 --region us-east-2 --instance-types t2.micro --managed --vpc-cidr 192.168.100.0/24 --node-private-networking --version 1.27 --without-nodegroup
+		aws eks update-kubeconfig --region us-east-2 --name "dvsbatch3-eks-2"
+		kubectl delete daemonset -n kube-system aws-node
+		kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/tigera-operator.yaml
+kubectl create -f - <<EOF
+kind: Installation
+apiVersion: operator.tigera.io/v1
+metadata:
+  name: default
+spec:
+  kubernetesProvider: EKS
+  cni:
+    type: Calico
+  calicoNetwork:
+    bgp: Disabled
+EOF
+
+		eksctl create nodegroup --cluster dvsbatch3-eks-2 --name nodegroup1 --nodes 2 --node-type t2.micro --node-private-networking --managed --max-pods-per-node 200
+
+	5. Update the kubeconfig so that you can login to the cluster
+	aws eks update-kubeconfig --region us-east-2 --name "dvsbatch3-eks-2"
+
+	verification:
+	kubectl get nodes
+
+
+
+3. Integrating Jenkins with kubernetes
+
+	Install kubernetes plugin to integrate K8S with jenkins
+	Explain the need of having seperate ns,sv account,role,rolebinding etc .. 
+	
+Please create below yaml files
+	Creating namespace:
+		vi ns.yaml 
+		apiVersion: v1
+		kind: Namespace
+		metadata:
+		  creationTimestamp: null
+		  name: devops-tools
+	Creating a role for accessing objects:
+		vi role.yaml
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: jenkins-role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create","delete","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get","list","watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create","delete","deletecollection","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["deployments"]
+  verbs: ["create","delete","deletecollection","get","list","patch","update","watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create","delete","deletecollection","get","list","patch","update","watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["create","delete","deletecollection","get","list","patch","update","watch"]
+
+Creating service account:
+	vi sa.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jenkins-admin
+  namespace: devops-tools
+
+Creating secret for the service account:
+vi secret.yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jenkins-secret
+  namespace: devops-tools
+  annotations:
+    kubernetes.io/service-account.name: jenkins-admin
+type: kubernetes.io/service-account-token
+
+Creating role binding:
+vi rolebinding.yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jenkins-role
+subjects:
+- kind: ServiceAccount
+  name: jenkins-admin
+  namespace: devops-tools
+	  
+	We need below information to integrate k8s with jenkins
+
+		1. K8s url
+		2. A secret to authenticate with the cluster
+		3. Jenkins url
+		4. Have to enable inbound port for the agents to 50000
+
+	kubectl config view |grep -i server
+	kubectl get secrets jenkins-secret  -o=jsonpath='{.data.token}' -n devops-tools | base64 -d
+	
+4 Testing pipeline execution on k8s
+Configure the pod template under kubernetes plugin and then run the pipeline 
+
+pipeline {
+  agent {
+    kubernetes {
+		label 'maven'
+		defaultContainer 'maven'
+		cloud 'kubernetes'
+    }
+  }
+  stages {
+    stage('Run maven') {
+      steps {
+		script {
+			sh """
+				echo "Hurray jenkins configuration is completed !!!!!"
+			"""
+		}
+      }
+    }
+  }
+}
+
+5 Adding jenkins slave pod
+
+GitUrl: https://github.com/shan5a6/javaSpringBoot.git
+Build Image: docker.io/maven
+
+pipeline {
+	agent {
+		kubernetes {
+			label "batch3pod"
+			cloud "finaltestk8s"
+		}
+	} 
+	stages {
+		stage("working with file operations") {
+			steps {
+				script {
+						sh """
+							git --version
+							mvn --version
+						"""
+					}
+				}
+			}
+		}
+	}
+}
+
+6. Generating Jenkins token for Git trigger
+7 Configure git token
+8 Creating sonar project to scan the code
+
+9. Sonarcli image:
+sonarsource/sonar-scanner-cli
+
+Troubleshooting pod creation issues:
+ 
+ensure jenkins ip is given as public ipaddress during cloud creation time in jenkins kubernetes plugin 
+ensure security group for the eks cluster is allowed for the jenkins  communication 
+
+
