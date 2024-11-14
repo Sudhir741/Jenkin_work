@@ -1,0 +1,23 @@
+Autoscalling ::
+
+1. Explain more about Launch Configuration 
+
+sudo amazon-linux-extras install epel -y
+sudo yum install stress -y
+
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+nohup sudo stress --cpu 8 -v --timeout 30000 &
+
+Killing stress process:
+
+for i in $(ps -ef|grep -i stress|awk '{print $2}'); do kill -9 $i; done
+
+
+ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head
+
