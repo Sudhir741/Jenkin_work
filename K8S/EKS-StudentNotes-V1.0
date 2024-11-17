@@ -226,6 +226,8 @@ spec:
 	Create an IAM user called eks-admin & ensure that you are giving him admin or eks privligies
 	Generate the aws cli access key,token & then try to configure the aws cli
 	Once done then try to build the cluster using the above generated credentials
+	AWS KEY ID: AKIAQHCMABLRE25BAXSM
+	AWS SECRET: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
 
 	4. Once you are done with the above just execute the below command
 
