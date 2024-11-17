@@ -202,6 +202,8 @@ spec:
 			sudo ./aws/install
 		2. Install eksctl latest binary
 			https://eksctl.io/installation/
+
+		PUT BELOW in /tmp/eksctl
 			# for ARM systems, set ARCH to: arm64, armv6 or armv7
 			ARCH=amd64
 			PLATFORM=$(uname -s)_$ARCH
