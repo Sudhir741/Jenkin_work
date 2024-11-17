@@ -244,9 +244,9 @@ metadata:
 spec:
   kubernetesProvider: EKS
   cni:
-	type: Calico
+    type: Calico
   calicoNetwork:
-	bgp: Disabled
+    bgp: Disabled
 EOF
 
 		eksctl create nodegroup --cluster dvsbatch3-eks-2 --name nodegroup1 --nodes 2 --node-type t2.medium --node-private-networking --managed --max-pods-per-node 200
