@@ -217,7 +217,7 @@ spec:
 
 		3. Install latest of needed version of kubectl command
 			https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
-			curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.28.3/2023-11-14/bin/linux/amd64/kubectl
+			curl -O https://s3.ap-south-1.amazonaws.com/amazon-eks/1.28.3/2023-11-14/bin/linux/amd64/kubectl
 			chmod +x ./kubectl
 			mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$PATH
 			echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
@@ -231,10 +231,13 @@ spec:
 
 	4. Once you are done with the above just execute the below command
 
-		eksctl create cluster --name dvsbatch3-eks-2 --region us-east-2 --instance-types t2.micro \
+		eksctl create cluster --name sudhir-cluster --region ap-south-1 --instance-types t2.micro \
 		--managed --vpc-cidr 192.168.100.0/24 --node-private-networking --version 1.27 --without-nodegroup
-		aws eks update-kubeconfig --region us-east-2 --name "dvsbatch3-eks-2"
+
+		aws eks update-kubeconfig --region ap-south-1 --name "sudhir-cluster"
+
 		kubectl delete daemonset -n kube-system aws-node
+
 		kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.1/manifests/tigera-operator.yaml
 kubectl create -f - <<EOF
 kind: Installation
@@ -249,16 +252,16 @@ spec:
     bgp: Disabled
 EOF
 
-		eksctl create nodegroup --cluster dvsbatch3-eks-2 --name nodegroup1 --nodes 2 --node-type t2.medium --node-private-networking --managed --max-pods-per-node 200
+		eksctl create nodegroup --cluster sudhir-cluster --name nodegroup1 --nodes 2 --node-type t2.medium --node-private-networking --managed --max-pods-per-node 120
 
 	5. Update the kubeconfig so that you can login to the cluster
-	aws eks update-kubeconfig --region us-east-2 --name "dvsbatch3-eks-2"
+	aws eks update-kubeconfig --region us-east-2 --name "sudhir-cluster"
 
 	verification:
 	kubectl get nodes
 
 	6. Deleting cluster
-	eksctl delete cluster --name "dvsbatch3-eks-2"
+	eksctl delete cluster --name "sudhir-cluster"
 
 
 Topic 4::
