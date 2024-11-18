@@ -40,7 +40,7 @@ Installing and configuring aws eks cluster:
 			curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 			unzip awscliv2.zip
 			sudo ./aws/install
-		2. Install eksctl latest binary
+		2. Install eksctl latest binary  [note: remove spaces :%s/\t//g]
 			https://eksctl.io/installation/
 			# for ARM systems, set ARCH to: arm64, armv6 or armv7
 			ARCH=amd64
@@ -53,7 +53,7 @@ Installing and configuring aws eks cluster:
 			echo 'export PATH=$HOME/bin:$PATH' >> ~/.bashrc
 			eksctl version
 
-		3. Install latest of needed version of kubectl command
+		3. Install latest of needed version of kubectl command [note: remove spaces :%s/\t//g]
 			https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
 			curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.28.3/2023-11-14/bin/linux/amd64/kubectl
 			chmod +x ./kubectl
