@@ -1,0 +1,55 @@
+pip3 install paramiko -U
+pip3 install netmiko -U
+
+[root@python tmp]# cat "serverslist"
+100.27.12.201
+52.91.133.214
+
+Login To Multiple servers using username & pemkey (private key)
+
+[root@python realtime]# cat user-pemlogin.py
+#!/usr/bin/python3
+import paramiko
+import time
+servers=open("serverslist","r")
+k = paramiko.RSAKey.from_private_key_file("/tmp/mykey.pem")
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+for i in servers.readlines():
+    print("===========****** "+i.strip("\n")+" ******===========")
+    ssh.connect(i.strip("\n"), username = "ec2-user", pkey = k)
+    commands = ["df -hT","uname -a","ls -l /tmp"]
+    for command in commands:
+        stdin, stdout, stderr = ssh.exec_command(command)
+        stdout_str = stdout.read().decode('utf-8')
+        time.sleep(2)
+        print(stdout_str)
+    ssh.close()
+
+
+Login To Multiple servers using username & password 
+
+[root@python realtime]# cat user-passlogin.py
+#!/usr/bin/python3
+import paramiko
+import time
+import getpass
+mypass = getpass.getpass()
+servers = open("serverslist","r")
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+for i in servers.readlines():
+    print("===========****** "+i.strip("\n")+" ******===========")
+    ssh.connect(i.strip("\n"), username = "ec2-user", password = mypass)
+    commands = ["df -hT","uname -a","ls -l /tmp"]
+    for command in commands:
+        stdin, stdout, stderr = ssh.exec_command(command)
+        stdout_str = stdout.read().decode('utf-8')
+        time.sleep(2)
+        print(stdout_str)
+    ssh.close()
+
+
+
+
+
